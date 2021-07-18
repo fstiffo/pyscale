@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, String, Integer, Date, create_engine, text
-from sqlalchemy.orm import declarative_base, relationship, declared_attr, sessionmaker
+from sqlalchemy.orm import declarative_base, relationship, declared_attr, sessionmaker, with_polymorphic
 from sqlalchemy.sql.schema import ForeignKey
 
 Base = declarative_base()
@@ -41,6 +41,9 @@ class Operazione(Base):
     importo = Column(Integer, nullable=False)
     type = Column(String(20))
 
+    def contabile(self):
+        return self.importo
+
     __mapper_args__ = {
         'polymorphic_on': type,
         'polymorphic_identity': 'operazione'
@@ -48,6 +51,10 @@ class Operazione(Base):
 
 
 class PagamentoScale(Operazione):
+
+    def contabile(self):
+        return -self.importo
+
     __mapper_args__ = {
         'polymorphic_identity': 'pagamento_scale'
     }
@@ -67,9 +74,12 @@ class AltraSpesa(Operazione):
         'polymorphic_identity': 'altra_spesa'
     }
 
+    def contabile(self):
+        return -self.importo
+
     @declared_attr
     def causale(cls):
-        "Causale column, if not present already."
+        """Causale column, if not present already."""
         return Operazione.__table__.c.get('causale', Column(String))
 
 
@@ -80,11 +90,14 @@ class AltroVersamento(Operazione):
 
     @declared_attr
     def causale(cls):
-        "Causale column, if not present already."
+        """Causale column, if not present already."""
         return AltraSpesa.__table__.c.get('causale', Column(String))
 
 
 class Prestito(Operazione):
+    def contabile(self):
+        return -self.importo
+
     __mapper_args__ = {
         'polymorphic_identity': 'prestito'
     }
@@ -190,3 +203,12 @@ def import_from_scale():
             session.add(restituzione)
 
     session.commit()
+
+
+def cassa():
+    # query using with_polymorphic.
+    all_operazione = with_polymorphic(Operazione,
+                                      [PagamentoScale, VersamentoQuote, AltraSpesa, AltroVersamento, Prestito,
+                                       Restituzione])
+    operazioni = session.query(all_operazione).all()
+    return sum(map(lambda o: o.contabile(), operazioni))
