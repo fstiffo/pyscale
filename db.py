@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, String, Integer, Date, create_engine
+from sqlalchemy import Column, String, Integer, Date, create_engine, text
 from sqlalchemy.orm import declarative_base, relationship, declared_attr, sessionmaker
 from sqlalchemy.sql.schema import ForeignKey
 
@@ -118,5 +118,75 @@ def setup():
             Condomino(id=1, nome="Gerardo"),
             Condomino(id=2, nome="Elena"),
             Condomino(id=3, nome="Giulia")])
+
+    session.commit()
+
+
+def import_from_scale():
+    engine_scale = create_engine('sqlite:///scale.db', echo=True)
+
+    with engine_scale.connect() as connection:
+        result = connection.execute(text("SELECT * FROM PulizieScale"))
+        for row in result:
+            pagamento_scale = PagamentoScale(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=20)
+            session.add(pagamento_scale)
+
+        result = connection.execute(text("SELECT * FROM VersamentiQuote"))
+        for row in result:
+            versamento_quote = VersamentoQuote(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=int(row['importo']),
+                condomino_id=int(row['id_condomino']))
+            session.add(versamento_quote)
+
+        result = connection.execute(text("SELECT * FROM AltreSpese"))
+        for row in result:
+            altra_spesa = AltraSpesa(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=int(row['importo']),
+                causale=row['descrizione'])
+            session.add(altra_spesa)
+
+        result = connection.execute(text("SELECT * FROM AltriVersamenti"))
+        for row in result:
+            altro_versamento = AltroVersamento(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=int(row['importo']),
+                causale=row['descrizione'])
+            session.add(altro_versamento)
+
+        result = connection.execute(text("SELECT * FROM Prestiti_"))
+        for row in result:
+            prestito = Prestito(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=int(row['importo']))
+            session.add(prestito)
+
+        result = connection.execute(text("SELECT * FROM Restituzioni_"))
+        for row in result:
+            restituzione = Restituzione(
+                data=datetime.datetime(
+                    year=int(row['anno']),
+                    month=int(row['mese']),
+                    day=int(row['giorno'])),
+                importo=int(row['importo']))
+            session.add(restituzione)
 
     session.commit()
