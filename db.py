@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, String, Integer, Date, create_engine, text
+from sqlalchemy import Column, String, Integer, Date, create_engine, text, select
 from sqlalchemy.orm import declarative_base, relationship, declared_attr, sessionmaker, with_polymorphic
 from sqlalchemy.sql.schema import ForeignKey
 
@@ -55,6 +55,9 @@ class PagamentoScale(Operazione):
     def contabile(self):
         return -self.importo
 
+    def __str__(self) -> str:
+        return "Pagamento scale"
+
     __mapper_args__ = {
         'polymorphic_identity': 'pagamento_scale'
     }
@@ -64,15 +67,15 @@ class VersamentoQuote(Operazione):
     condomino_id = Column(Integer, ForeignKey('condomini.id'))
     condomino = relationship("Condomino", back_populates="versamenti_quote")
 
+    def __str__(self) -> str:
+        return f"Pagamento quote ({self.condomino.nome})"
+
     __mapper_args__ = {
         'polymorphic_identity': 'versamento_quote'
     }
 
 
 class AltraSpesa(Operazione):
-    __mapper_args__ = {
-        'polymorphic_identity': 'altra_spesa'
-    }
 
     def contabile(self):
         return -self.importo
@@ -82,21 +85,34 @@ class AltraSpesa(Operazione):
         """Causale column, if not present already."""
         return Operazione.__table__.c.get('causale', Column(String))
 
+    def __str__(self) -> str:
+        return f"Altra spesa ({self.causale})"
 
-class AltroVersamento(Operazione):
     __mapper_args__ = {
-        'polymorphic_identity': 'altro_versamento'
+        'polymorphic_identity': 'altra_spesa'
     }
 
+
+class AltroVersamento(Operazione):
     @declared_attr
     def causale(cls):
         """Causale column, if not present already."""
         return AltraSpesa.__table__.c.get('causale', Column(String))
 
+    def __str__(self) -> str:
+        return f"Altro versamento ({self.causale})"
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'altro_versamento'
+    }
+
 
 class Prestito(Operazione):
     def contabile(self):
         return -self.importo
+
+    def __str__(self) -> str:
+        return f"Prestito"
 
     __mapper_args__ = {
         'polymorphic_identity': 'prestito'
@@ -104,6 +120,9 @@ class Prestito(Operazione):
 
 
 class Restituzione(Operazione):
+    def __str__(self) -> str:
+        return f"Restituzione"
+
     __mapper_args__ = {
         'polymorphic_identity': 'restituzione'
     }
@@ -205,10 +224,27 @@ def import_from_scale():
     session.commit()
 
 
+def nome_condomino(condomino_id):
+    stmt = select(Condomino).where(Condomino.id == condomino_id)
+    result = session.execute(stmt)
+    return result.scalars().first().nome
+
+
 def cassa():
     # query using with_polymorphic.
-    all_operazione = with_polymorphic(Operazione,
-                                      [PagamentoScale, VersamentoQuote, AltraSpesa, AltroVersamento, Prestito,
-                                       Restituzione])
-    operazioni = session.query(all_operazione).all()
-    return sum(map(lambda o: o.contabile(), operazioni))
+    operazione_subclasses = with_polymorphic(Operazione,
+                                             [PagamentoScale, VersamentoQuote, AltraSpesa, AltroVersamento, Prestito,
+                                              Restituzione])
+    stmt = select(operazione_subclasses)
+    result = session.execute(stmt)
+    return sum(map(lambda o: o.contabile(), result.scalars().all()))
+
+
+def get_operazioni():
+    # query using with_polymorphic.
+    operazione_subclasses = with_polymorphic(Operazione,
+                                             [PagamentoScale, VersamentoQuote, AltraSpesa, AltroVersamento, Prestito,
+                                              Restituzione])
+    stmt = select(operazione_subclasses).order_by(Operazione.data.desc())
+    result = session.execute(stmt)
+    return list(map(lambda o: [o.data.strftime("%d-%m-%Y"), o.contabile(), str(o)], result.scalars().all()))
