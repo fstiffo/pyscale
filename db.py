@@ -247,4 +247,6 @@ def get_operazioni():
                                               Restituzione])
     stmt = select(operazione_subclasses).order_by(Operazione.data.desc())
     result = session.execute(stmt)
-    return list(map(lambda o: [o.data.strftime("%d-%m-%Y"), o.contabile(), str(o)], result.scalars().all()))
+    return list(map(
+        lambda o: (o.id, o.data.strftime("%d-%m-%Y") + "{:5d}".format(o.contabile()) + " " + str(o)),
+        result.scalars().all()))
