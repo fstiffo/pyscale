@@ -17,6 +17,8 @@ if __name__ == '__main__':
     print_hi('PyCharm')
     db.setup()
     # db.import_from_scale()
-    print(db.cassa())
+    print(f"Cassa: {db.cassa()}")
+    print(f"Prestito: {db.prestito()}")
+    print(f"Tesoretto: {db.tesoretto()}")
     gui.start_gui()
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

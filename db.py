@@ -1,4 +1,6 @@
 import datetime
+from dateutils import relativedelta
+
 from sqlalchemy import Column, String, Integer, Date, create_engine, text, select
 from sqlalchemy.orm import declarative_base, relationship, declared_attr, sessionmaker, with_polymorphic
 from sqlalchemy.sql.schema import ForeignKey
@@ -128,10 +130,10 @@ class Restituzione(Operazione):
     }
 
 
-engine = create_engine('sqlite:///stato_scale.db', echo=True)
+engine = create_engine('sqlite:///stato_scale.db', echo=False, future=True)
 Base.metadata.create_all(engine)
 
-Session = sessionmaker(engine)
+Session = sessionmaker(engine, future=True)
 session = Session()
 
 
@@ -238,6 +240,41 @@ def cassa():
     stmt = select(operazione_subclasses)
     result = session.execute(stmt)
     return sum(map(lambda o: o.contabile(), result.scalars().all()))
+
+
+def prestito():
+    stmt = select(Prestito, Restituzione)
+    result = session.execute(stmt)
+    return sum(map(lambda o: o.contabile(), result.scalars().all()))
+
+
+def tesoretto():
+    stmt = select(PagamentoScale)
+    result = session.execute(stmt)
+    totale_pagamento_scale = sum(map(lambda o: o.importo, result.scalars().all()))
+
+    stmt = select(AltraSpesa)
+    result = session.execute(stmt)
+    altre_spese = result.scalars().all()
+    stmt = select(AltroVersamento)
+    result = session.execute(stmt)
+    altri_versamenti = result.scalars().all()
+
+    totale_altro = sum(map(lambda o: o.contabile(), altre_spese+altri_versamenti))
+
+    stmt = select(Parametro)  # .order_by(Parametro.valido_dal.desc())
+    result = session.execute(stmt)
+    parametro = result.first()[0]
+
+    rel_delta = relativedelta(datetime.date.today(), parametro.valido_dal)
+    mesi = rel_delta.years * 12 + rel_delta.months
+
+    stmt = select(Condomino)
+    result = session.execute(stmt)
+    num_condomini = len(result.all())
+
+    # mesi * num_condomini * (snd s.attuale).quotaMensile + altro - pagamenti
+    return mesi * num_condomini * parametro.quota_mensile + totale_altro - totale_pagamento_scale
 
 
 def get_operazioni():
