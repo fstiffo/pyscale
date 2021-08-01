@@ -18,7 +18,7 @@ if __name__ == '__main__':
     db.setup()
     # db.import_from_scale()
     print(f"Cassa: {db.cassa()}")
-    print(f"Prestito: {db.prestito()}")
+    print(f"Prestito: {db.da_restituire()}")
     print(f"Tesoretto: {db.tesoretto()}")
     gui.start_gui()
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

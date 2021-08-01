@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 sqlalchemy = "*"
+dateutils = "*"
+dearpygui = "*"
 
 [dev-packages]
 

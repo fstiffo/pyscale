@@ -47,7 +47,8 @@ def start_gui():
                 gui.selected = sender
             dpg.set_value( gui.selected_text, f"My Object Id: {user_data}")
 
-        with dpg.child(label="left panel", height=0, width=400, border=True):
+        dpg.add_text("Operazioni")
+        with dpg.child(label="left panel", height=0, width=450, border=True):
             operazioni = db.get_operazioni()
             for o in operazioni:
                 label = o[1]

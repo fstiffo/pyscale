@@ -242,7 +242,7 @@ def cassa():
     return sum(map(lambda o: o.contabile(), result.scalars().all()))
 
 
-def prestito():
+def da_restituire():
     stmt = select(Prestito, Restituzione)
     result = session.execute(stmt)
     return sum(map(lambda o: o.contabile(), result.scalars().all()))
